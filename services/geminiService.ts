@@ -9,12 +9,21 @@ export const getTutorResponse = async (history: ChatMessage[], message: string, 
             body: JSON.stringify({ history, message, systemInstruction }),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to get response from AI tutor.');
-        }
+        const responseBody = await response.text();
 
-        const data = await response.json();
+        if (!response.ok) {
+            // Try to parse as JSON for a structured message, otherwise use the text itself.
+            try {
+                const errorJson = JSON.parse(responseBody);
+                throw new Error(errorJson.message || `Request failed with status ${response.status}`);
+            } catch (e) {
+                // The body wasn't JSON, throw the raw text which is likely HTML or a simple string.
+                throw new Error(responseBody || `Request failed with status ${response.status}`);
+            }
+        }
+        
+        // Response is OK, so body should be JSON.
+        const data = JSON.parse(responseBody);
         return data.text;
 
     } catch (error) {
@@ -32,12 +41,24 @@ export const generateMockTest = async (subject: string, numberOfQuestions: numbe
             body: JSON.stringify({ subject, numberOfQuestions }),
         });
         
+        const responseBody = await response.text();
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'The AI failed to generate the test.');
+            // Try to parse as JSON for a structured message, otherwise use the text itself.
+            try {
+                const errorJson = JSON.parse(responseBody);
+                throw new Error(errorJson.message || `Request failed with status ${response.status}`);
+            } catch (e) {
+                 // The body wasn't JSON, throw the raw text.
+                throw new Error(responseBody || `Request failed with status ${response.status}`);
+            }
         }
 
-        const data: MockQuestion[] = await response.json();
+        if (!responseBody) {
+            throw new Error("Received empty response from the server.");
+        }
+        
+        const data: MockQuestion[] = JSON.parse(responseBody);
 
         if (Array.isArray(data) && data.length > 0 && data[0].question && data[0].options) {
             return data;
@@ -46,6 +67,10 @@ export const generateMockTest = async (subject: string, numberOfQuestions: numbe
 
     } catch (error) {
         console.error("Failed to generate or parse mock test:", error);
-        throw new Error(error.message || "Could not generate the mock test. Please try again.");
+        // Re-throw the error to be caught by the UI component
+        if (error instanceof SyntaxError && error.message.includes("JSON")) {
+            throw new Error(`The AI returned an invalid response. Please try again. The response was not valid JSON.`);
+        }
+        throw error;
     }
 };
