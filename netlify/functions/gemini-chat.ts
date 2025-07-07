@@ -1,3 +1,4 @@
+
 import type { Handler, HandlerEvent } from "@netlify/functions";
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { ChatMessage } from "../../types";
@@ -31,7 +32,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    const response: GenerateContentResponse = await chat.sendMessage({ message });
+    // Corrected the sendMessage call to pass the message string directly as per the SDK.
+    const response: GenerateContentResponse = await chat.sendMessage(message);
 
     return {
       statusCode: 200,
