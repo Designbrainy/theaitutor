@@ -1,6 +1,5 @@
-
 import type { Handler, HandlerEvent } from "@netlify/functions";
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Chat } from "@google/genai";
 import type { ChatMessage } from "../../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -22,7 +21,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       parts: [{ text: msg.text }],
     }));
 
-    const chat = ai.chats.create({
+    const chat: Chat = ai.chats.create({
       model: 'gemini-2.5-flash-preview-04-17',
       history: apiHistory,
       config: {
@@ -32,8 +31,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    // Corrected the sendMessage call to pass the message string directly as per the SDK.
-    const response: GenerateContentResponse = await chat.sendMessage(message);
+    const response: GenerateContentResponse = await chat.sendMessage({ message });
 
     return {
       statusCode: 200,
